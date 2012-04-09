@@ -163,7 +163,6 @@ main(void)
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
         printf(2, "cannot cd %s\n", buf+3);
-      else ;
       continue;
     }
     if(fork1() == 0)
