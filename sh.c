@@ -12,6 +12,8 @@
 #define BACK  5
 
 #define MAXARGS 10
+#define BUFFERSIZE 256
+
 
 struct cmd {
   int type;
@@ -131,9 +133,9 @@ runcmd(struct cmd *cmd)
 }
 
 int
-getcmd(char *buf, int nbuf)
+getcmd(char *buf, int nbuf, char *pwd)
 {
-  printf(2, "$ ");
+  printf(2, "%s/>", pwd);
   memset(buf, 0, nbuf);
   gets(buf, nbuf);
   if(buf[0] == 0) // EOF
@@ -141,11 +143,63 @@ getcmd(char *buf, int nbuf)
   return 0;
 }
 
+
+void changePrompt(char *pwd, char buf[BUFFERSIZE], int currentChar, int fromRoot){
+	int charInd;
+	char * wordBuf = (char *) malloc (sizeof(char) * BUFFERSIZE); //initializing the maximum size of a directory name
+	int wordBufIndex = 0;
+	if (fromRoot == 1){
+		//need to start from root directory
+		pwd[0] = 0;
+		//the next information should be added, but not reset to the root
+		fromRoot = 0;
+	}
+	
+	//part of example and testing!!
+	printf(1, "will now print all directories\n");
+	//end part of example and testing!!
+	
+	for (charInd = currentChar; charInd<BUFFERSIZE && buf[charInd] != 0; charInd++){
+			if (buf[charInd] != '/'){
+				wordBuf[wordBufIndex] = buf[charInd];
+				wordBufIndex++;
+			}
+			else {
+				wordBuf[wordBufIndex] = 0;
+				
+				
+				//example of what to do: ie print stuff, asked to print correctly!!
+				
+				printf(2, "%s\n", wordBuf); 
+				wordBufIndex = 0;
+				
+				//end example
+				
+				
+				
+				//will now handle one word(tommorow morning)
+				
+				//after handling, will call the recurr chagePrompt(blablabla) as needed
+			}
+	}
+	
+	//for epilogue is needed for the last directory, if someone used 'cd xyz' and not 'cd xyz/' - which is the same thing
+	//for epilogue:
+	wordBuf[wordBufIndex] = 0;
+	printf(2, "%s\n", wordBuf); 
+	wordBufIndex = 0;
+	//rof
+}
+
 int
 main(void)
 {
-  static char buf[100];
+  static char buf[BUFFERSIZE];
   int fd;
+  int fromRoot;
+  char * pwd = (char *) malloc(sizeof(char) * 1024);
+  pwd[0] = 0;
+  
   
   // Assumes three file descriptors open.
   while((fd = open("console", O_RDWR)) >= 0){
@@ -156,13 +210,22 @@ main(void)
   }
   
   // Read and run input commands.
-  while(getcmd(buf, sizeof(buf)) >= 0){
+  while(getcmd(buf, sizeof(buf), pwd) >= 0){
     if(buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' '){
       // Clumsy but will have to do for now.
       // Chdir has no effect on the parent if run in the child.
       buf[strlen(buf)-1] = 0;  // chop \n
       if(chdir(buf+3) < 0)
-        printf(2, "cannot cd %s\n", buf+3);
+		printf(2, "cannot cd %s\n", buf+3);
+      else{
+		//success in chdir-ing, we have to change our prompt
+		if (buf[3] =='/')
+			fromRoot = 1;
+		else 
+			fromRoot = 0;
+		changePrompt(pwd, buf, 3, fromRoot);
+	  }
+      
       continue;
     }
     if(fork1() == 0)
