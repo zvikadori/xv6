@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#define DEFAULT_HANDLER -1;
 
 struct {
   struct spinlock lock;
@@ -78,6 +79,7 @@ found:
 void
 userinit(void)
 {
+  int i;
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
@@ -100,6 +102,10 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+  
+  p->pendingSignals = 0;
+  for (i=0; i< 32; i++)
+	p->signalHandlers[i] = (sighandler_t) DEFAULT_HANDLER;
 }
 
 // Grow current process's memory by n bytes.
@@ -436,6 +442,11 @@ kill(int pid)
   return -1;
 }
 
+
+
+
+
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
@@ -474,3 +485,24 @@ procdump(void)
 }
 
 
+int
+getSigBitwise(int signum){
+	int ans = 1;
+	return ans << signum;
+}
+
+int
+signal(int signum, sighandler_t handler){
+	int i;
+	for (i=0; i<32; i++)
+		cprintf("%d\n",(int) proc->signalHandlers[i]);
+	if (signum >= 0 && signum <=31 && handler != 0){
+		proc->signalHandlers[signum] = handler;
+		for (i=0; i<32; i++)
+			cprintf("%d\n",(int) proc->signalHandlers[i]);
+		return 0;
+	}
+	else return -1;
+
+
+}

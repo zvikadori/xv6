@@ -5,6 +5,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+int signal(int signum, sighandler_t handler);
 
 int
 sys_fork(void)
@@ -88,3 +89,20 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+int
+sys_signal(void){
+	int signum;
+	int handlerInt;
+	//sighandler_t handler;
+	
+	if (argint(0, &signum) < 0)
+		return -1;
+	if (argint(1, &handlerInt) <0)
+		return -1;
+	
+	return signal(signum, (sighandler_t) handlerInt);
+	
+}
+
+
