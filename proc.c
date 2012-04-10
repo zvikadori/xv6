@@ -7,6 +7,7 @@
 #include "proc.h"
 #include "spinlock.h"
 #define DEFAULT_HANDLER -1;
+#define NUM_OF_SIGNALS 32;
 
 struct {
   struct spinlock lock;
@@ -281,7 +282,9 @@ void
 scheduler(void)
 {
   struct proc *p;
-
+  int pPendingSignals;
+  int i;
+  int bitwiseSig;
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -291,7 +294,16 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-
+	  
+	  pPendingSignals = p->pendingSignals;
+	  for (i = 0; i< NUM_OF_SIGNALS; i++){
+		bitwiseSig = getSigBitwise(i);
+		if (bitwiseSig & pPendingSignals > 0){
+			register_handler(p->signalHandlers[i]);
+			break;
+		}
+	  }//look for default behavior, how should we do it, code should be after proc=p, line 310
+	  
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
