@@ -15,6 +15,23 @@
 #define BUFFERSIZE 256
 
 
+
+char*
+strncat(char *dest, const char *src,int n)
+{
+   int dest_len = strlen(dest);
+   int i;
+
+   for (i = 0 ; i < n && src[i] != '\0' ; i++)
+	   dest[dest_len + i] = src[i];
+   dest[dest_len + i] = '\0';
+
+   return dest;
+}
+
+
+
+
 struct cmd {
   int type;
 };
@@ -143,6 +160,20 @@ getcmd(char *buf, int nbuf, char *pwd)
   return 0;
 }
 
+void doCdGoBack(char * pwd){
+	int length = strlen(pwd);
+	int endOfWord = length -1;
+	while (pwd[endOfWord] !='/' && endOfWord >0)
+		endOfWord--;
+	pwd[endOfWord] = 0;
+	
+}
+
+void doGotoDir(char *pwd, char *buf){
+	strncat(pwd, "/",BUFFERSIZE);
+	strncat(pwd, buf,BUFFERSIZE);
+	
+}
 
 void changePrompt(char *pwd, char buf[BUFFERSIZE], int currentChar, int fromRoot){
 	int charInd;
@@ -155,9 +186,6 @@ void changePrompt(char *pwd, char buf[BUFFERSIZE], int currentChar, int fromRoot
 		fromRoot = 0;
 	}
 	
-	//part of example and testing!!
-	printf(1, "will now print all directories\n");
-	//end part of example and testing!!
 	
 	for (charInd = currentChar; charInd<BUFFERSIZE && buf[charInd] != 0; charInd++){
 			if (buf[charInd] != '/'){
@@ -166,29 +194,31 @@ void changePrompt(char *pwd, char buf[BUFFERSIZE], int currentChar, int fromRoot
 			}
 			else {
 				wordBuf[wordBufIndex] = 0;
-				
-				
-				//example of what to do: ie print stuff, asked to print correctly!!
-				
-				printf(2, "%s\n", wordBuf); 
-				wordBufIndex = 0;
-				
-				//end example
-				
-				
-				
 				//will now handle one word(tommorow morning)
-				
-				//after handling, will call the recurr chagePrompt(blablabla) as needed
+				if (strcmp(wordBuf, "..") == 0)
+					doCdGoBack(pwd);
+				else
+					if (strcmp(wordBuf, ".") != 0 && strcmp(wordBuf, "") != 0){
+						doGotoDir(pwd, wordBuf);
+						//printf(2, "\n\n pwd is: %s \n", pwd);
+					}
+				wordBufIndex = 0;
 			}
 	}
 	
 	//for epilogue is needed for the last directory, if someone used 'cd xyz' and not 'cd xyz/' - which is the same thing
 	//for epilogue:
+	
 	wordBuf[wordBufIndex] = 0;
-	printf(2, "%s\n", wordBuf); 
+	if (strcmp(wordBuf, "..") == 0)
+		doCdGoBack(pwd); 
+	else
+		if (strcmp(wordBuf, ".") != 0 && strcmp(wordBuf, "") != 0)
+			doGotoDir(pwd, wordBuf);
 	wordBufIndex = 0;
 	//rof
+	 
+	
 }
 
 int
@@ -224,6 +254,7 @@ main(void)
 		else 
 			fromRoot = 0;
 		changePrompt(pwd, buf, 3, fromRoot);
+		
 	  }
       
       continue;
