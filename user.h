@@ -27,6 +27,7 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int signal(int signum, sighandler_t handler);
+int sigsend(int pid, int signum);
 
 
 // ulib.c

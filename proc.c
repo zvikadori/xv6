@@ -484,7 +484,7 @@ procdump(void)
   }
 }
 
-
+/* auxilary function for getting the bitwise number */
 int
 getSigBitwise(int signum){
 	int ans = 1;
@@ -503,6 +503,24 @@ signal(int signum, sighandler_t handler){
 		return 0;
 	}
 	else return -1;
+}
 
-
+int
+sigsend(int pid, int signum){
+	//find the process with the pid in the ptable
+	struct proc *p;
+	int flag = 0; //flaging if we broke the loop, if we didn't, pid does not exist
+	int sigBitwise = getSigBitwise(signum);
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+		if (p->pid == pid){
+			flag = 1;
+			break;
+		}
+	}
+	cprintf("before: %d     ", p->pendingSignals);
+	if (flag == 0)
+		return -1;
+	p->pendingSignals = p->pendingSignals | sigBitwise;
+	cprintf("after: %d\n", p->pendingSignals);
+	return 0;
 }

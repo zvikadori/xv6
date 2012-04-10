@@ -6,6 +6,8 @@
 #include "mmu.h"
 #include "proc.h"
 int signal(int signum, sighandler_t handler);
+int sigsend(int pid, int signum);
+
 
 int
 sys_fork(void)
@@ -104,5 +106,15 @@ sys_signal(void){
 	return signal(signum, (sighandler_t) handlerInt);
 	
 }
-
-
+/*int sigsend(int pid, int signum)*/
+int
+sys_sigsend(void){
+	int pid;
+	int signum;
+	if (argint(0, &pid) < 0)
+		return -1;
+	if (argint(1, &signum) < 0)
+		return -1;
+		
+	return sigsend(pid, signum);
+}

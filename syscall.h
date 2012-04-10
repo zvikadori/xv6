@@ -26,3 +26,7 @@
 /* added for task 2.2, zvika dori*/
 #define SYS_signal 22
 /* end added...*/
+
+/* added for task 2.3 zvika dori */
+#define SYS_sigsend 23
+/* end added....*/
