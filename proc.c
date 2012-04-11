@@ -6,8 +6,10 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#define DEFAULT_HANDLER -1;
-#define NUM_OF_SIGNALS 32;
+#include "defhandlers.c"
+#define NUM_OF_SIGNALS 32
+#define SIG_IGN -1
+#define SIG_DFL -2
 
 struct {
   struct spinlock lock;
@@ -28,6 +30,20 @@ pinit(void)
   initlock(&ptable.lock, "ptable");
 }
 
+
+/* auxilary function for getting the bitwise number */
+int
+getSigBitwise(int signum){
+	int ans = 1;
+	return ans << signum;
+}
+
+/* ausxilary function for xoring 2 operators */
+int
+getBitwiseXor(int a, int b){
+	return a ^ b;
+}
+
 //PAGEBREAK: 32
 // Look in the process table for an UNUSED proc.
 // If found, change state to EMBRYO and initialize
@@ -38,7 +54,7 @@ allocproc(void)
 {
   struct proc *p;
   char *sp;
-
+  int i;
   acquire(&ptable.lock);
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
@@ -71,7 +87,14 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
-
+  
+  p->pendingSignals = 0;
+  for (i=0; i< 32; i++)
+	p->signalHandlers[i] = (sighandler_t) SIG_IGN;
+  p->signalHandlers[0] =  (sighandler_t) SIG_DFL;
+  p->signalHandlers[1] =  (sighandler_t) SIG_DFL;
+  p->signalHandlers[2] =  (sighandler_t) SIG_DFL;
+  p->signalHandlers[3] =  (sighandler_t) SIG_DFL;
   return p;
 }
 
@@ -80,7 +103,6 @@ found:
 void
 userinit(void)
 {
-  int i;
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
   
@@ -104,9 +126,7 @@ userinit(void)
 
   p->state = RUNNABLE;
   
-  p->pendingSignals = 0;
-  for (i=0; i< 32; i++)
-	p->signalHandlers[i] = (sighandler_t) DEFAULT_HANDLER;
+  
 }
 
 // Grow current process's memory by n bytes.
@@ -152,7 +172,11 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
-
+  
+  
+  
+  
+  
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -162,8 +186,18 @@ fork(void)
   np->cwd = idup(proc->cwd);
  
   pid = np->pid;
+  
+  /* task 2.5 */
+  
+  np->pendingSignals = proc->pendingSignals;
+  for (i = 0; i< NUM_OF_SIGNALS; i++)
+	np->signalHandlers[i] = proc->signalHandlers[i];
+  
+  /* end task 2.5 */
+  
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+  
   return pid;
 }
 
@@ -283,8 +317,19 @@ scheduler(void)
 {
   struct proc *p;
   int pPendingSignals;
+  sighandler_t handler;
+  sighandler_t defaultHandlers[32]; //32 default functions for handling signals the default way
   int i;
   int bitwiseSig;
+  //registering default handlers:
+  for(i = 0; i< NUM_OF_SIGNALS; i++)
+	  defaultHandlers[i] = doNothingHandler;
+  	  
+  defaultHandlers[0] = sigIntHandler;
+  defaultHandlers[1] = sigUsr1Handler;
+  defaultHandlers[2] = sigUsr2Handler;
+  defaultHandlers[3] = sigChldHandler;
+  
   for(;;){
     // Enable interrupts on this processor.
     sti();
@@ -295,24 +340,48 @@ scheduler(void)
       if(p->state != RUNNABLE)
         continue;
 	  
-	  pPendingSignals = p->pendingSignals;
-	  for (i = 0; i< NUM_OF_SIGNALS; i++){
-		bitwiseSig = getSigBitwise(i);
-		if (bitwiseSig & pPendingSignals > 0){
-			register_handler(p->signalHandlers[i]);
-			break;
-		}
-	  }//look for default behavior, how should we do it, code should be after proc=p, line 310
+	  
 	  
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
       proc = p;
+      
+      pPendingSignals = p->pendingSignals;
+	  for (i = 0; i < NUM_OF_SIGNALS; i++){
+		bitwiseSig = getSigBitwise(i);
+		if ((bitwiseSig & pPendingSignals) > 0){
+			
+			if ((int)p->signalHandlers[i] == SIG_DFL){
+				//need to take DFL action, it is clear to the process, it does not know that the signal was handeled
+				handler = defaultHandlers[i];
+				handler();
+				p->pendingSignals = getBitwiseXor(p->pendingSignals, bitwiseSig);
+				break;
+			}
+			
+			else{
+				if ((int)p->signalHandlers[i] == SIG_IGN){
+			         p->pendingSignals = getBitwiseXor(p->pendingSignals, bitwiseSig);
+					 break;
+				}
+				else{
+					register_handler(p->signalHandlers[i]);
+					break;
+					//todo XOR to make signal go away - AFTER CPU GETS TIME BEFORE PROC = 0!!
+				}
+			}
+		}
+	  }
+      
+      
       switchuvm(p);
       p->state = RUNNING;
       swtch(&cpu->scheduler, proc->context);
       switchkvm();
-
+	  
+	  proc->pendingSignals = getBitwiseXor(proc->pendingSignals, bitwiseSig);
+	  
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       proc = 0;
@@ -496,22 +565,12 @@ procdump(void)
   }
 }
 
-/* auxilary function for getting the bitwise number */
-int
-getSigBitwise(int signum){
-	int ans = 1;
-	return ans << signum;
-}
+
 
 int
 signal(int signum, sighandler_t handler){
-	int i;
-	for (i=0; i<32; i++)
-		cprintf("%d\n",(int) proc->signalHandlers[i]);
-	if (signum >= 0 && signum <=31 && handler != 0){
+	if (signum >= 0 && signum <=31){
 		proc->signalHandlers[signum] = handler;
-		for (i=0; i<32; i++)
-			cprintf("%d\n",(int) proc->signalHandlers[i]);
 		return 0;
 	}
 	else return -1;
@@ -523,16 +582,20 @@ sigsend(int pid, int signum){
 	struct proc *p;
 	int flag = 0; //flaging if we broke the loop, if we didn't, pid does not exist
 	int sigBitwise = getSigBitwise(signum);
+	acquire(&ptable.lock);
 	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
 		if (p->pid == pid){
 			flag = 1;
 			break;
 		}
 	}
-	cprintf("before: %d     ", p->pendingSignals);
-	if (flag == 0)
+		//cprintf("before: %d     ", p->pendingSignals);
+	if (flag == 0){
+		release(&ptable.lock);
 		return -1;
+	}
 	p->pendingSignals = p->pendingSignals | sigBitwise;
-	cprintf("after: %d\n", p->pendingSignals);
+		//cprintf("after: %d\n", p->pendingSignals);
+	release(&ptable.lock);
 	return 0;
 }
