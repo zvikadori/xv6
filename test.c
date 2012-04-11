@@ -1,23 +1,30 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-
+#include "signal.h"
 #ifndef sighandler_t
 typedef void (*sighandler_t)(void);
 #endif
 
+
 int main (void){
-	//printf("\n%d\n\n\n\n\n", 512);
-	//sighandler_t firstHandler = (sighandler_t) 5;
+	sighandler_t firstHandler = (sighandler_t) 5;
+	//int pid;
+	signal(10, firstHandler);
+	signal(SIGINT, (sighandler_t) SIG_DFL);
+	sleep(50);
+	printf(2, "getpid is: %d\n", getpid());
+	//sigsend(getpid(), SIGINT);
+	//kill(getpid());
+	for(;;);
+	//kill(getpid());
+	//sigsend(2, 0);
+	//sigsend(2, 3);
+	//sigsend(2, 1);
 	
-	//signal(1, firstHandler);
+	//sigsend(2, 2);
+	printf(1,"afffffffffffff");
 	
-	//sigsend(getpid(), 3);
-	//sigsend(getpid(), 6);
 	
-	//sigsend(getpid(), 0);
-	//sigsend(getpid(), 5);
-	//sigsend(getpid(), 10);
-	//sigsend(getpid(), 10);
 	exit();
 }

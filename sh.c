@@ -3,6 +3,7 @@
 #include "types.h"
 #include "user.h"
 #include "fcntl.h"
+#include "signal.h"
 
 // Parsed command representation
 #define EXEC  1
@@ -13,7 +14,6 @@
 
 #define MAXARGS 10
 #define BUFFERSIZE 256
-
 
 
 char*

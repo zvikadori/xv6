@@ -14,6 +14,13 @@
 #include "proc.h"
 #include "x86.h"
 
+
+#ifndef SIGINT
+#define SIGINT 0
+#endif
+
+int sigsend(int, int );
+
 static void consputc(int);
 
 static int panicked = 0;
@@ -192,6 +199,12 @@ consoleintr(int (*getc)(void))
   acquire(&input.lock);
   while((c = getc()) >= 0){
     switch(c){
+    case C('C'):
+		cprintf("\n%s\n", proc->name);
+		if(proc->parent->pid !=1){ //works only when not in shell...
+			sigsend(proc->pid, );
+		}
+		break;
     case C('P'):  // Process listing.
       procdump();
       break;
