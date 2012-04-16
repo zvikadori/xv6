@@ -25,6 +25,8 @@ struct {
 
 
 static struct proc *initproc;
+static int lastShInvokedPid = -1;
+
 
 int nextpid = 1;
 extern void forkret(void);
@@ -135,7 +137,6 @@ userinit(void)
 
   p->state = RUNNABLE;
   
-  
 }
 
 // Grow current process's memory by n bytes.
@@ -182,10 +183,6 @@ fork(void)
   np->parent = proc;
   *np->tf = *proc->tf;
   
-  
-  
-  
-  
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -206,6 +203,9 @@ fork(void)
   
   np->state = RUNNABLE;
   safestrcpy(np->name, proc->name, sizeof(proc->name));
+  
+  if (strncmp(proc->name, "sh", 3) == 0)
+	lastShInvokedPid = np->pid;
   
   return pid;
 }
@@ -248,6 +248,7 @@ exit(void)
   }
 
   // Jump into the scheduler, never to return.
+  lastShInvokedPid = -1;
   proc->state = ZOMBIE;
   sched();
   panic("zombie exit");
@@ -530,12 +531,15 @@ kill(int pid)
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING){
         p->state = RUNNABLE;
-        /* task 3 */
-        release(&ptable.lock);
-		sigsend(proc->parent->pid, SIGCHLD);
-		acquire(&ptable.lock);
-		/* task 3 */
 	  }
+	  /* task 3 */
+	  release(&ptable.lock);
+	  sigsend(proc->parent->pid, SIGCHLD);
+	  acquire(&ptable.lock);
+	  /* task 3 */
+	  
+	  lastShInvokedPid = -1;
+	  
       release(&ptable.lock);
       return 0;
     }
@@ -625,12 +629,7 @@ sigsend(int pid, int signum){
 
 
 void ctrlc(void){
-	struct proc *p;
-	
-	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-    if(p->state == RUNNING)
-		//if(proc->pid!=2 || proc->pid!=1) //works only when not in shell...
-				//sigsend(proc->pid, SIGINT);
-				sigsend(p->pid, SIGINT);  //p->killed = 1;
-	}
+	if(lastShInvokedPid != -1)
+		sigsend(lastShInvokedPid, SIGINT); 
+
 }

@@ -16,6 +16,7 @@ int main (void){
 	printf(2, "getpid is: %d\n", getpid());
 	//sigsend(getpid(), SIGINT);
 	//kill(getpid());
+	exit();
 	for(;;);
 	//kill(getpid());
 	//sigsend(2, 0);
