@@ -531,7 +531,9 @@ kill(int pid)
       if(p->state == SLEEPING){
         p->state = RUNNABLE;
         /* task 3 */
+        release(&ptable.lock);
 		sigsend(proc->parent->pid, SIGCHLD);
+		acquire(&ptable.lock);
 		/* task 3 */
 	  }
       release(&ptable.lock);
@@ -613,11 +615,22 @@ sigsend(int pid, int signum){
 	
 	if (flag == 0){
 		release(&ptable.lock);
-		//cprintf("failed!!");
 		return -1;
 	}
 	p->pendingSignals = p->pendingSignals | sigBitwise;
 	
 	release(&ptable.lock);
 	return 0;
+}
+
+
+void ctrlc(void){
+	struct proc *p;
+	
+	for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == RUNNING)
+		//if(proc->pid!=2 || proc->pid!=1) //works only when not in shell...
+				//sigsend(proc->pid, SIGINT);
+				sigsend(p->pid, SIGINT);  //p->killed = 1;
+	}
 }

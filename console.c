@@ -20,6 +20,7 @@
 #endif
 
 int sigsend(int, int );
+void ctrlc(void);
 
 static void consputc(int);
 
@@ -200,10 +201,7 @@ consoleintr(int (*getc)(void))
   while((c = getc()) >= 0){
     switch(c){
     case C('C'):
-		cprintf("\n%s\n", proc->name);
-		if(proc->parent->pid !=1){ //works only when not in shell...
-			sigsend(proc->pid, );
-		}
+		ctrlc();
 		break;
     case C('P'):  // Process listing.
       procdump();
