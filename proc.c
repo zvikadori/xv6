@@ -105,7 +105,6 @@ found:
   p->signalHandlers[1] =  (sighandler_t) SIG_DFL;
   p->signalHandlers[2] =  (sighandler_t) SIG_DFL;
   p->signalHandlers[3] =  (sighandler_t) SIG_DFL;
-  p->signalHandlers[12] = (sighandler_t) SIG_DFL;
   return p;
 }
 
@@ -325,21 +324,34 @@ register_handler(sighandler_t sighandler)
 void
 scheduler(void)
 {
+  
   struct proc *p;
   int pPendingSignals;
   sighandler_t handler;
   sighandler_t defaultHandlers[32]; //32 default functions for handling signals the default way
+  int originalHandlers[32];
   int i;
   int bitwiseSig;
   int registeredFlag = 0; //anotates that the signal that was handeled was a user signal
-  //registering default handlers:
-  for(i = 0; i< NUM_OF_SIGNALS; i++)
+  //registering original handlers:
+  for(i = 0; i< NUM_OF_SIGNALS; i++){
 	  defaultHandlers[i] = doNothingHandler;
+	  originalHandlers[i] = SIG_IGN;
+  }
   	  
   defaultHandlers[0] = sigIntHandler;
+  originalHandlers[0] = SIG_DFL;
+  
   defaultHandlers[1] = sigUsr1Handler;
+  originalHandlers[1] = SIG_DFL;
+  
   defaultHandlers[2] = sigUsr2Handler;
+  originalHandlers[2] = SIG_DFL;
+  
   defaultHandlers[3] = sigChldHandler;
+  originalHandlers[3] = SIG_DFL;
+  
+  //end registering original handlers, check also allocproc it should be matched
   
   for(;;){
     // Enable interrupts on this processor.
@@ -378,7 +390,12 @@ scheduler(void)
 					 break;
 				}
 				else{
+					
 					register_handler(p->signalHandlers[i]);
+					if (originalHandlers[i] == SIG_DFL)
+					  proc->signalHandlers[i] = (sighandler_t) SIG_DFL;
+					if (originalHandlers[i] == SIG_IGN)
+					  proc->signalHandlers[i] = (sighandler_t) SIG_IGN;
 					registeredFlag = 1;
 					break;
 					//todo XOR to make signal go away - AFTER CPU GETS TIME BEFORE PROC = 0!!
@@ -394,7 +411,8 @@ scheduler(void)
       switchkvm();
 	  if (registeredFlag == 1){
 		proc->pendingSignals = getBitwiseXor(proc->pendingSignals, bitwiseSig);
-		proc->signalHandlers[i] = (sighandler_t) SIG_DFL;
+		//proc->signalHandlers[i] = (sighandler_t) SIG_DFL;
+		registeredFlag =0;
 	  }
 	  
       // Process is done running for now.
@@ -531,7 +549,7 @@ kill(int pid)
       // Wake process from sleep if necessary.
       if(p->state == SLEEPING){
         p->state = RUNNABLE;
-	  }
+      }
 	  /* task 3 */
 	  release(&ptable.lock);
 	  sigsend(proc->parent->pid, SIGCHLD);

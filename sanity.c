@@ -2,20 +2,26 @@
 #include "stat.h"
 #include "user.h"
 #include "signal.h"
-
+int processCounter =3;
 void finish(void)
-{
-	signal(3,finish);
-	printf(2,"ssss %d\n",getpid());
-	kill(getpid());
-
+{ 
+	signal(SIGCHLD,finish);
+	//printf(1,"KAAAA"); 
+	processCounter--;
+	//printf(2,"counter=%d",processCounter); 
+	if(processCounter == 0)
+	{
+	 exit();
+	}
 }
 
 
 void ouch(void )
 {
 			signal(4,ouch);
+			//sigsend(5, SIGCHLD);
 			printf(2,"ouch %d\n",getpid());
+			//kill(getpid());
 			
 }
 
@@ -70,7 +76,7 @@ int main ()
 					{
 						sigsend(pid1,enteredSignal);
 					}
-				    if(enteredChildId==1)
+					if(enteredChildId==1)
 					{
 						sigsend(pid2,enteredSignal);
 					}

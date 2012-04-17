@@ -2,10 +2,11 @@
 #include "stat.h"
 #include "user.h"
 #include "signal.h"
+/*
 #ifndef sighandler_t
 typedef void (*sighandler_t)(void);
 #endif
-
+*/
 
 int main (void){
 	sighandler_t firstHandler = (sighandler_t) 5;
@@ -16,7 +17,7 @@ int main (void){
 	printf(2, "getpid is: %d\n", getpid());
 	//sigsend(getpid(), SIGINT);
 	//kill(getpid());
-	exit();
+	//exit();
 	for(;;);
 	//kill(getpid());
 	//sigsend(2, 0);

@@ -17,5 +17,5 @@ void sigUsr2Handler(void){
 }
 
 void sigChldHandler(void){
-	;
+  ;
 }

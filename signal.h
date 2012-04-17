@@ -9,8 +9,9 @@
 #define SIGINT 0
 #define SIGCHLD 3
 
-
+/*
 #ifndef sighandler_t
 typedef void (*sighandler_t)(void);
 #endif
 
+*/
